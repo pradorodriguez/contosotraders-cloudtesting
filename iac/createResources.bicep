@@ -36,6 +36,7 @@ param deployPrivateEndpoints bool = false
 ////////////////////////////////////////////////////////////////////////////////
 
 // key vault
+var kvSoftDelete = false
 var kvName = '${prefix}kv${suffix}'
 var kvSecretNameProductsApiEndpoint = 'productsApiEndpoint'
 var kvSecretNameProductsDbConnStr = 'productsDbConnectionString'
@@ -131,6 +132,7 @@ var appInsightsName = '${prefixHyphenated}-ai${suffix}'
 var portalDashboardName = '${prefixHyphenated}-dashboard${suffix}'
 
 // aks cluster
+var aksAutoScaling = true
 var aksClusterName = '${prefixHyphenated}-aks${suffix}'
 var aksClusterDnsPrefix = '${prefixHyphenated}-aks${suffix}'
 var aksClusterNodeResourceGroup = '${prefixHyphenated}-aks-nodes-rg${suffix}'
@@ -200,6 +202,7 @@ resource kv 'Microsoft.KeyVault/vaults@2022-07-01' = {
         }
       }
     ]
+    enableSoftDelete: kvSoftDelete
     sku: {
       family: 'A'
       name: 'standard'
@@ -1299,6 +1302,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2022-10-02-preview' = {
         name: 'agentpool'
         osDiskSizeGB: 0 // Specifying 0 will apply the default disk size for that agentVMSize.
         count: 1
+        enableAutoScaling: aksAutoScaling
+        minCount: 1 // minimum node count
+        maxCount: 3 // maximum node count
         vmSize: 'standard_b2s'
         osType: 'Linux'
         mode: 'System'
