@@ -24,6 +24,7 @@ You will need following to get started:
    * `az provider register -n Microsoft.OperationsManagement -c`
    * `az provider register -n Microsoft.Cdn -c`
    * `az provider register -n Microsoft.Chaos -c`
+   * `az provider register -n Microsoft.App`
 
 4. Create an Azure Service Principal and add it to the `Owner` role in your Azure subscription:
    * `az ad sp create-for-rbac -n contosotraders-sp --role Owner --scopes /subscriptions/<AZURE-SUBSCRIPTION-ID> --sdk-auth`. Replace `<AZURE-SUBSCRIPTION-ID>` with your Azure subscription ID.
@@ -103,7 +104,6 @@ Manually create an Azure Cognitive Service resource in your subscription tempora
 
     | Variable Name      | Variable Value                                                                                                                                                                              |
     | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    | `SUFFIX`           | A unique environment suffix (max 6 characters, alphanumeric, lower case only, no whitespace, no special chars). E.g. 'test51' or '1stg'                                                     |
     | `DEPLOYMENTREGION` | The Azure region to deploy the application in. Must be one of: `australiaeast`,`centralus`,`eastus`,`eastus2`,`japaneast`,`northcentralus`,`uksouth`,`westcentralus`,`westeurope` |
 
 3. (optional) if you would like to deploy the additional resources to test private endpoints, set the following variable:'
@@ -143,7 +143,6 @@ For further learning, you can run through some of the demo scripts listed below:
 * [Developer workflow](../demo-scripts/dev-workflow/walkthrough.md)
 * [Azure Load Testing](../demo-scripts/azure-load-testing/walkthrough.md)
 * [Azure Chaos Studio](../demo-scripts/azure-chaos-studio/walkthrough.md)
-* [UI Testing with Playwright](../demo-scripts/testing-with-playwright/walkthrough.md)
 
 ## Cleanup
 
