@@ -1,23 +1,30 @@
 # Contoso Traders - Cloud testing tools demo app
 
-The Contoso Traders app is a sample application showcasing [Playwright](https://playwright.dev), [Azure Load Testing](https://aka.ms/malt-docs), [Azure Chaos Studio](https://aka.ms/CHAOS-docs) and more.
+> [!WARNING]  
+> The content of this repository is based on [contosotraders-cloudtesting](https://github.com/microsoft/contosotraders-cloudtesting) and has been modified to focus its instructions in Github and Azure Chaos Studio experiments.
+
+The Contoso Traders app is a sample application showcasing [Azure Load Testing](https://aka.ms/malt-docs), [Azure Chaos Studio](https://aka.ms/CHAOS-docs) and more.
 
 This repo contains the source code, deployment templates, and demo scripts for exploring these cloud testing tools.
 
 ## Overview Video
+
+> [!WARNING]
+> The following overview video explains the purpose and high-level deployment steps. Note that the Playwright section has been removed from this repository, so you may omit that section when following this repository.
+
 [![Watch the overview video](https://img.youtube.com/vi/7JletmiT3io/hq1.jpg)](https://youtu.be/7JletmiT3io)
 
 ## Documentation and Resources
 
-* Application Links: [UI](https://cloudtesting.contosotraders.com/) | [Carts API](https://contoso-traders-cartsctprd.bluestone-748d2276.eastus.azurecontainerapps.io/swagger/index.html) | [Products API](https://contoso-traders-productsctprd.eastus.cloudapp.azure.com/swagger/index.html)
-* [Deployment Instructions](./docs/deployment-instructions.md) | [Running Locally](./docs/running-locally.md)
+* The following link will showcase the steps needed to deploy the Contoso Trader application into an Azure Subscription
+
+[Deployment Instructions](./docs/deployment-instructions.md)
 
 ## Continuous Integration
 
 | Pipeline                                                                     | Status                                                                                                                                                                                                                                                                               | Details                                                        |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | [GitHub Workflow](./.github/workflows/contoso-traders-cloud-testing.yml)     | [![contoso-traders-cloud-testing](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml/badge.svg?branch=main)](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml) | Deploys to [production](https://production.contosotraders.com) |
-| [Azure DevOps Pipeline](./.azurepipelines/contoso-traders-cloud-testing.yml) | [![Build Status](https://dev.azure.com/MicrosoftTestDemos/ContosoTraders_Testing/_apis/build/status%2Fmicrosoft.contosotraders-cloudtesting?branchName=main)](https://dev.azure.com/MicrosoftTestDemos/ContosoTraders_Testing/_build/latest?definitionId=1&branchName=main)          | Deploys to [staging](https://staging.contosotraders.com)       |
 
 ## Demo Scripts
 
@@ -33,12 +40,9 @@ This repo contains the source code, deployment templates, and demo scripts for e
   * [Create an experiment using Key Vault Deny Access fault to test the products API (AKS).](./demo-scripts/azure-chaos-studio/walkthrough.md)
   * [Run experiment in GitHub Actions to inject faults (pod failures) into the AKS cluster.](./demo-scripts/azure-chaos-studio/walkthrough.md#walkthrough-running-chaos-experiments-via-github-workflows)
 
-* Playwright - Reliable end-to-end testing for modern web apps.
-  * [Use the VS Code extension to explore and run web tests](./demo-scripts/testing-with-playwright/walkthrough.md) for [API testing](src/ContosoTraders.Ui.Website/tests/api), [Authentication](src/ContosoTraders.Ui.Website/tests/auth.setup.ts), [Shopping cart](src/ContosoTraders.Ui.Website/tests/cart.spec.ts), [Uploading files](src/ContosoTraders.Ui.Website/tests/fileupload.spec.ts), [Visual Comparisons](src/ContosoTraders.Ui.Website/tests/pages.spec.ts#L63), [Emulation](src/ContosoTraders.Ui.Website/tests/map.spec.ts), [Mocking](src/ContosoTraders.Ui.Website/tests/mocks.spec.ts), and [using a CSV for data](src/ContosoTraders.Ui.Website/tests/account.ts)
-
 ## Architecture
 
-![Architecture](./docs/architecture/contoso-traders-enhancements.drawio.png)
+![Architecture](./docs/architecture/contoso-traders-enhancements.drawio-v2.jpg)
 
 ## Contributing
 
