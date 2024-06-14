@@ -17,21 +17,24 @@ You will need following to get started:
 
 1. Log into Azure CLI with your Azure credentials: `az login`
 
-2. Ensure that the correct Azure subscription is selected: `az account show`
+1. Ensure that the correct Azure subscription is selected: `az account show`
    * If not, select the correct subscription: `az account set -s <AZURE-SUBSCRIPTION-ID>`. Replace `<AZURE-SUBSCRIPTION-ID>` with your Azure subscription ID.
 
-3. Register some required resource providers in your Azure subscription:
+1. Register some required resource providers in your Azure subscription:
    * `az provider register -n Microsoft.OperationsManagement -c`
    * `az provider register -n Microsoft.Cdn -c`
    * `az provider register -n Microsoft.Chaos -c`
    * `az provider register -n Microsoft.App`
 
-4. Create an Azure Service Principal and add it to the `Owner` role in your Azure subscription:
+1. Create an Azure Service Principal and add it to the `Owner` role in your Azure subscription:
    * `az ad sp create-for-rbac -n contosotraders-sp --role Owner --scopes /subscriptions/<AZURE-SUBSCRIPTION-ID> --sdk-auth`. Replace `<AZURE-SUBSCRIPTION-ID>` with your Azure subscription ID.
    * Make a note of the JSON output from above step (especially the `clientId`, `clientSecret`, `subscriptionId` and `tenantId` properties). These will be required later.
    * You'll notice a warning in the output: `Option '--sdk-auth' has been deprecated and will be removed in a future release`. This is [a known issue, without workarounds, but can be safely ignored](https://github.com/Azure/azure-cli/issues/20743).
 
-5. If for some reason, you do not have permissions to add the service principal in the `Owner` role on the subscription, then you can create a custom role and assign it to the service principal as follows (remember to replace `<AZURE-SUBSCRIPTION-ID>` in snippets below with your Azure subscription ID).
+> [!IMPORTANT]
+> If you do not have Azure permissions to add the service principal with the `Owner` role on the subscription **(previous step)**. Continue with the next step, else, you can skip it.
+
+1. **[OPTIONAL]** Create a custom role and assign it to the service principal as follows (remember to replace `<AZURE-SUBSCRIPTION-ID>` in snippets below with your Azure subscription ID).
 
    1. If using bash:
 
@@ -44,7 +47,7 @@ You will need following to get started:
       }'
       ```
 
-   2. If using PowerShell or cmd shell, you can run `az role definition create --role-definition ./custom-role.json`. Note that you need to first create a file called `custom-role.json` containing the following snippet.
+   1. If using PowerShell or cmd shell, you can run `az role definition create --role-definition ./custom-role.json`. Note that you need to first create a file called `custom-role.json` containing the following snippet.
 
       ```json
       {
@@ -55,13 +58,13 @@ You will need following to get started:
       }
       ```
 
-   3. Finally create the service principal and assign it to the custom role:
+   1. Finally create the service principal and assign it to the custom role:
 
       ```bash
       `az ad sp create-for-rbac -n contosotraders-sp --role "ContosoTraders Write Role Assignments" --scopes /subscriptions/<AZURE-SUBSCRIPTION-ID> --sdk-auth`
       ```
 
-6. If you haven't used Azure Cognitive Services with your subscription, you'll need to accept the responsible AI terms.
+1. If you haven't used Azure AI Services with your subscription, you'll need to accept the responsible AI terms.
 Manually create an Azure Cognitive Service resource in your subscription temporarily, and accept the Responsible AI terms. You can then delete the resource.
 
    * The Responsible AI terms are shown only once per subscription (during first Cognitive Service resource creation in subscription), and once accepted, they are not shown again.
@@ -100,13 +103,13 @@ Manually create an Azure Cognitive Service resource in your subscription tempora
 
     The values of the properties needed can be found in the JSON output of the `az ad sp create-for-rbac` command in the previous section.
 
-2. Set up the repository variables in your forked repo. On your fork of the github repository, go to the `Settings` tab > `Secrets and variables` > `Actions` > `Variables` tab and create these necessary repository variables:
+1. Set up the repository variables in your forked repo. On your fork of the github repository, go to the `Settings` tab > `Secrets and variables` > `Actions` > `Variables` tab and create these necessary repository variables:
 
     | Variable Name      | Variable Value                                                                                                                                                                              |
     | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
     | `DEPLOYMENTREGION` | The Azure region to deploy the application in. Must be one of: `australiaeast`,`centralus`,`eastus`,`eastus2`,`japaneast`,`northcentralus`,`uksouth`,`westcentralus`,`westeurope` |
 
-3. (optional) if you would like to deploy the additional resources to test private endpoints, set the following variable:'
+1. (optional) if you would like to deploy the additional resources to test private endpoints, set the following variable:'
 
     | Variable Name      | Variable Value                                                                                                                                                                              |
     | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -116,7 +119,7 @@ Manually create an Azure Cognitive Service resource in your subscription tempora
 
 1. Go to your forked repo's `Actions` tab, selecting the `contoso-traders-cloud-testing` workflow, and click on the `Run workflow` button.
 
-2. This github workflow will provision the necessary infrastructure to your Azure subscription as well as deploy the applications (APIs, UI) to the infrastructure. Note that the workflow might take about 15 mins to complete.
+1. This github workflow will provision the necessary infrastructure to your Azure subscription as well as deploy the applications (APIs, UI) to the infrastructure. Note that the workflow might take about 15 mins to complete.
 
   ![workflow-logs](./images/github-workflow.png)
 
@@ -126,7 +129,7 @@ Manually create an Azure Cognitive Service resource in your subscription tempora
 
     ![Endpoints in workflow logs](./images/ui-endpoint-github-workflow.png)
 
-2. Clicking on the URL above, will load the application in a new browser tab. You can then verify that the application is indeed up and running.
+1. Clicking on the URL above, will load the application in a new browser tab. You can then verify that the application is indeed up and running.
 
 ### Troubleshooting Deployment Errors
 
@@ -134,7 +137,7 @@ Here are some common problems that you may encounter during deployment:
 
 1. Intermittent errors: Should you encounter any of [these intermittent errors](https://github.com/microsoft/ContosoTraders/issues?q=is%3Aissue+is%3Aopen+label%3Adevops) in the github workflow, please re-run the failed jobs (it'll will pass on retry). We're working to fix these soon.
 
-2. There is a [known issue](https://github.com/Azure/login/issues/249) where the Azure login github action fails if the service principal's `clientSecret` begins with `-` (hyphen). If you encounter this, please regenerate a new secret, update the repository secret in your github fork, and restart the workflow.
+1. There is a [known issue](https://github.com/Azure/login/issues/249) where the Azure login github action fails if the service principal's `clientSecret` begins with `-` (hyphen). If you encounter this, please regenerate a new secret, update the repository secret in your github fork, and restart the workflow.
 
 ## Explore Demo Scenarios
 
@@ -157,10 +160,10 @@ The `contoso-traders-aks-nodes-rg{SUFFIX}` will be automatically deleted as part
 A quick note on costs considerations when you deploy the application to your Azure subscription:
 
 1. Azure Load Testing ([pricing details](https://azure.microsoft.com/pricing/details/load-testing/)): The number of virtual users and duration of the test are the key factors that determine the cost of the test. In this demo, the load tests are configured to use 5 virtual users and the test is set to run for 3 mins.
-2. Azure Kubernetes Service ([pricing details](https://azure.microsoft.com/pricing/details/kubernetes-service/)): The number of nodes and the number of hours that the cluster is running are the key factors that determine the cost of the cluster. In this demo, the cluster is configured to use 1 node (powered by vm scale sets) and the cluster is set to run 24x7 (you can manually stop the cluster when not in use). Because of a [limitation in the AKS bicep schema](https://github.com/Azure/bicep/issues/6974), the AKS cluster has to use premium SSD storage disks.
-3. Azure Container Apps ([pricing details](https://azure.microsoft.com/pricing/details/container-apps/)): Each instance has 0.5 vCPU and 1.0 GiB of memory. In this demo, the container app is configured to use 1 instance, but can autoscale out to max 3 instances under load.
-4. Azure Virtual Machines ([pricing details](https://azure.microsoft.com/pricing/details/virtual-machines/windows/)): The jumpbox VM uses the `Standard_D2s_v3` VM size, which has 2 vCPU and 8 GiB of memory. The jumpbox VMs are schedule to auto-shutdown at 1900 UTC daily. You can also manually stop & deallocate the VM when not in use.
-5. Github Actions / storage quota ([pricing details](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#included-storage-and-minutes)): We've set the playwright test to enable recordings only on failures/retries. This brings the playwright report to ~55 MB when tests fail.
+1. Azure Kubernetes Service ([pricing details](https://azure.microsoft.com/pricing/details/kubernetes-service/)): The number of nodes and the number of hours that the cluster is running are the key factors that determine the cost of the cluster. In this demo, the cluster is configured to use 1 node (powered by vm scale sets) and the cluster is set to run 24x7 (you can manually stop the cluster when not in use). Because of a [limitation in the AKS bicep schema](https://github.com/Azure/bicep/issues/6974), the AKS cluster has to use premium SSD storage disks.
+1. Azure Container Apps ([pricing details](https://azure.microsoft.com/pricing/details/container-apps/)): Each instance has 0.5 vCPU and 1.0 GiB of memory. In this demo, the container app is configured to use 1 instance, but can autoscale out to max 3 instances under load.
+1. Azure Virtual Machines ([pricing details](https://azure.microsoft.com/pricing/details/virtual-machines/windows/)): The jumpbox VM uses the `Standard_D2s_v3` VM size, which has 2 vCPU and 8 GiB of memory. The jumpbox VMs are schedule to auto-shutdown at 1900 UTC daily. You can also manually stop & deallocate the VM when not in use.
+1. Github Actions / storage quota ([pricing details](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#included-storage-and-minutes)): We've set the playwright test to enable recordings only on failures/retries. This brings the playwright report to ~55 MB when tests fail.
 
 >
 > The above costs are based on the default configuration of the demo. You can modify the configuration to reduce the costs. For example, you can reduce the number of instances in the container app, reduce the number of virtual users in the load test, etc.
