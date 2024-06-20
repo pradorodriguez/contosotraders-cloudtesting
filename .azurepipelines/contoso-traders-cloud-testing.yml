@@ -558,214 +558,214 @@ stages:
               scriptLocation: inlineScript
               inlineScript: echo UI CDN endpoint accessible at https://$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name uiCdnEndpoint --query value -o tsv)
 
-      - job: load_tests_with_chaos_products_api
-        dependsOn: [provision, playwright_tests_ui]
-        variables:
-          productsApiEndpoint: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]
-        steps:
-          - task: AzureCLI@1
-            displayName: get chaos experiment resource id
-            name: getChaosAksExperimentResourceId
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=chaosAksExperimentResourceId;isOutput=true]$(az resource show --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --namespace Microsoft.Chaos --resource-type Experiments --name $(CHAOS_AKS_EXPERIMENT_NAME)$(SUFFIX) --query "id" -o tsv)"
-          - task: AzureCLI@1
-            displayName: start chaos experiment (pod failure)
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              scriptLocation: inlineScript
-              inlineScript: az rest --method post --uri https://management.azure.com$(getChaosAksExperimentResourceId.chaosAksExperimentResourceId)/start?api-version=2021-09-15-preview
-          - bash: sleep 30s
-            displayName: sleep for 30 seconds
-          - task: AzureLoadTest@1
-            displayName: load test (products API)
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              # Path of the YAML file. Should be fully qualified path or relative to the default working directory
-              loadtestConfigFile: ./loadtests/contoso-traders-products.yaml
-              resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
-              env: |
-                [
-                  {
-                    "name": "domain",
-                    "value": "$(productsApiEndpoint)"
-                  },
-                  {
-                    "name": "protocol",
-                    "value": "https"
-                  },
-                  {
-                    "name": "path",
-                    "value": "v1/Products/1"
-                  },
-                  {
-                    "name": "threads_per_engine",
-                    "value": "5"
-                  },
-                  {
-                    "name": "ramp_up_time",
-                    "value": "0"
-                  },
-                  {
-                    "name": "duration_in_sec",
-                    "value": "120"
-                  }
-                ]
+      # - job: load_tests_with_chaos_products_api
+      #   dependsOn: [provision, playwright_tests_ui]
+      #   variables:
+      #     productsApiEndpoint: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]
+      #   steps:
+      #     - task: AzureCLI@1
+      #       displayName: get chaos experiment resource id
+      #       name: getChaosAksExperimentResourceId
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         scriptLocation: inlineScript
+      #         inlineScript: echo "##vso[task.setvariable variable=chaosAksExperimentResourceId;isOutput=true]$(az resource show --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --namespace Microsoft.Chaos --resource-type Experiments --name $(CHAOS_AKS_EXPERIMENT_NAME)$(SUFFIX) --query "id" -o tsv)"
+      #     - task: AzureCLI@1
+      #       displayName: start chaos experiment (pod failure)
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         scriptLocation: inlineScript
+      #         inlineScript: az rest --method post --uri https://management.azure.com$(getChaosAksExperimentResourceId.chaosAksExperimentResourceId)/start?api-version=2021-09-15-preview
+      #     - bash: sleep 30s
+      #       displayName: sleep for 30 seconds
+      #     - task: AzureLoadTest@1
+      #       displayName: load test (products API)
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         # Path of the YAML file. Should be fully qualified path or relative to the default working directory
+      #         loadtestConfigFile: ./loadtests/contoso-traders-products.yaml
+      #         resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
+      #         loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
+      #         env: |
+      #           [
+      #             {
+      #               "name": "domain",
+      #               "value": "$(productsApiEndpoint)"
+      #             },
+      #             {
+      #               "name": "protocol",
+      #               "value": "https"
+      #             },
+      #             {
+      #               "name": "path",
+      #               "value": "v1/Products/1"
+      #             },
+      #             {
+      #               "name": "threads_per_engine",
+      #               "value": "5"
+      #             },
+      #             {
+      #               "name": "ramp_up_time",
+      #               "value": "0"
+      #             },
+      #             {
+      #               "name": "duration_in_sec",
+      #               "value": "120"
+      #             }
+      #           ]
 
-      - job: load_tests_carts_internal_api
-        condition: eq(variables['DEPLOYPRIVATEENDPOINTS'], 'true')
-        dependsOn: [provision, playwright_tests_ui]
-        steps:
-          - task: AzureCLI@1
-            displayName: get carts api endpoint (internal)
-            name: getCartsInternalApiEndpoint
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=cartsInternalApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name cartsInternalApiEndpoint --query value -o tsv)"
-          - task: AzureCLI@1
-            displayName: get vnetAcaSubnetId
-            name: getVnetAcaSubnetId
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=vnetAcaSubnetId;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) -n vnetAcaSubnetId --query "value" -o tsv)"
-          - task: replacetokens@5
-            displayName: substitute tokens in load test config file
-            inputs:
-              targetFiles: ./loadtests/contoso-traders-carts-internal.yaml
-              tokenPattern: doublebraces
-              inlineVariables: "LOAD_TEST_SUBNET_ID: $(getVnetAcaSubnetId.vnetAcaSubnetId)"
-          - task: AzureLoadTest@1
-            displayName: load test (carts API)
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              # Path of the YAML file. Should be fully qualified path or relative to the default working directory
-              loadtestConfigFile: ./loadtests/contoso-traders-carts-internal.yaml
-              resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
-              env: |
-                [
-                  {
-                    "name": "domain",
-                    "value": "$(getCartsInternalApiEndpoint.cartsInternalApiEndpoint)"
-                  },
-                  {
-                    "name": "protocol",
-                    "value": "https"
-                  },
-                  {
-                    "name": "path",
-                    "value": "v1/ShoppingCart/loadtest"
-                  },
-                  {
-                    "name": "threads_per_engine",
-                    "value": "5"
-                  },
-                  {
-                    "name": "ramp_up_time",
-                    "value": "0"
-                  },
-                  {
-                    "name": "duration_in_sec",
-                    "value": "120"
-                  }
-                ]
+      # - job: load_tests_carts_internal_api
+      #   condition: eq(variables['DEPLOYPRIVATEENDPOINTS'], 'true')
+      #   dependsOn: [provision, playwright_tests_ui]
+      #   steps:
+      #     - task: AzureCLI@1
+      #       displayName: get carts api endpoint (internal)
+      #       name: getCartsInternalApiEndpoint
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         scriptLocation: inlineScript
+      #         inlineScript: echo "##vso[task.setvariable variable=cartsInternalApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name cartsInternalApiEndpoint --query value -o tsv)"
+      #     - task: AzureCLI@1
+      #       displayName: get vnetAcaSubnetId
+      #       name: getVnetAcaSubnetId
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         scriptLocation: inlineScript
+      #         inlineScript: echo "##vso[task.setvariable variable=vnetAcaSubnetId;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) -n vnetAcaSubnetId --query "value" -o tsv)"
+      #     - task: replacetokens@5
+      #       displayName: substitute tokens in load test config file
+      #       inputs:
+      #         targetFiles: ./loadtests/contoso-traders-carts-internal.yaml
+      #         tokenPattern: doublebraces
+      #         inlineVariables: "LOAD_TEST_SUBNET_ID: $(getVnetAcaSubnetId.vnetAcaSubnetId)"
+      #     - task: AzureLoadTest@1
+      #       displayName: load test (carts API)
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         # Path of the YAML file. Should be fully qualified path or relative to the default working directory
+      #         loadtestConfigFile: ./loadtests/contoso-traders-carts-internal.yaml
+      #         resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
+      #         loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
+      #         env: |
+      #           [
+      #             {
+      #               "name": "domain",
+      #               "value": "$(getCartsInternalApiEndpoint.cartsInternalApiEndpoint)"
+      #             },
+      #             {
+      #               "name": "protocol",
+      #               "value": "https"
+      #             },
+      #             {
+      #               "name": "path",
+      #               "value": "v1/ShoppingCart/loadtest"
+      #             },
+      #             {
+      #               "name": "threads_per_engine",
+      #               "value": "5"
+      #             },
+      #             {
+      #               "name": "ramp_up_time",
+      #               "value": "0"
+      #             },
+      #             {
+      #               "name": "duration_in_sec",
+      #               "value": "120"
+      #             }
+      #           ]
 
-      - job: load_tests_carts_api
-        dependsOn: [provision, playwright_tests_ui]
-        variables:
-          cartsApiEndpoint: $[ dependencies.provision.outputs['getCartsApiEndpoint.cartsApiEndpoint'] ]
-        steps:
-          - task: AzureLoadTest@1
-            displayName: load test (carts API)
-            inputs:
-              azureSubscription: SERVICEPRINCIPAL
-              # Path of the YAML file. Should be fully qualified path or relative to the default working directory
-              loadtestConfigFile: ./loadtests/contoso-traders-carts.yaml
-              resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
-              env: |
-                [
-                  {
-                    "name": "domain",
-                    "value": "$(cartsApiEndpoint)"
-                  },
-                  {
-                    "name": "protocol",
-                    "value": "https"
-                  },
-                  {
-                    "name": "path",
-                    "value": "v1/ShoppingCart/loadtest"
-                  },
-                  {
-                    "name": "threads_per_engine",
-                    "value": "5"
-                  },
-                  {
-                    "name": "ramp_up_time",
-                    "value": "0"
-                  },
-                  {
-                    "name": "duration_in_sec",
-                    "value": "120"
-                  }
-                ]
+      # - job: load_tests_carts_api
+      #   dependsOn: [provision, playwright_tests_ui]
+      #   variables:
+      #     cartsApiEndpoint: $[ dependencies.provision.outputs['getCartsApiEndpoint.cartsApiEndpoint'] ]
+      #   steps:
+      #     - task: AzureLoadTest@1
+      #       displayName: load test (carts API)
+      #       inputs:
+      #         azureSubscription: SERVICEPRINCIPAL
+      #         # Path of the YAML file. Should be fully qualified path or relative to the default working directory
+      #         loadtestConfigFile: ./loadtests/contoso-traders-carts.yaml
+      #         resourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
+      #         loadtestResource: $(LOAD_TEST_SERVICE_NAME)$(SUFFIX)
+      #         env: |
+      #           [
+      #             {
+      #               "name": "domain",
+      #               "value": "$(cartsApiEndpoint)"
+      #             },
+      #             {
+      #               "name": "protocol",
+      #               "value": "https"
+      #             },
+      #             {
+      #               "name": "path",
+      #               "value": "v1/ShoppingCart/loadtest"
+      #             },
+      #             {
+      #               "name": "threads_per_engine",
+      #               "value": "5"
+      #             },
+      #             {
+      #               "name": "ramp_up_time",
+      #               "value": "0"
+      #             },
+      #             {
+      #               "name": "duration_in_sec",
+      #               "value": "120"
+      #             }
+      #           ]
 
-      - job: playwright_tests_ui
-        dependsOn: [provision]
-        container: mcr.microsoft.com/playwright:v1.43.1-jammy
-        variables:
-          APIURLSHOPPINGCART: $[ dependencies.provision.outputs['getCartsApiEndpoint.cartsApiEndpoint'] ]
-          APIURL: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]
-          BASEURLFORPLAYWRIGHTTESTING: $[ dependencies.provision.outputs['getUiCdnEndpoint.uiCdnEndpoint'] ]
-          B2CCLIENTID: $[ dependencies.provision.outputs['getAzureAdAppClientId.azureAdAppClientId'] ]
-        steps:
-          - task: NodeTool@0
-            displayName: install nodejs
-            inputs:
-              versionSpec: 18.x
-          - script: echo "##vso[task.setvariable variable=REACT_APP_APIURLSHOPPINGCART]https://$(APIURLSHOPPINGCART)/v1"
-            displayName: set REACT_APP_APIURLSHOPPINGCART
-          - script: echo "##vso[task.setvariable variable=REACT_APP_APIURL]https://$(APIURL)/v1"
-            displayName: set REACT_APP_APIURL
-          - script: echo "##vso[task.setvariable variable=REACT_APP_BASEURLFORPLAYWRIGHTTESTING]https://$(BASEURLFORPLAYWRIGHTTESTING)"
-            displayName: set REACT_APP_BASEURLFORPLAYWRIGHTTESTING
-          - script: echo "##vso[task.setvariable variable=REACT_APP_B2CCLIENTID]$(B2CCLIENTID)"
-            displayName: set REACT_APP_B2CCLIENTID
-            condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
-          - script: echo "##vso[task.setvariable variable=REACT_APP_AADUSERNAME]$(AADUSERNAME)"
-            displayName: set REACT_APP_AADUSERNAME
-            condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
-          - script: echo "##vso[task.setvariable variable=REACT_APP_AADPASSWORD]$(AADPASSWORD)"
-            displayName: set REACT_APP_AADPASSWORD
-            condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
-          - script: npm ci
-            displayName: install dependencies
-            workingDirectory: src/ContosoTraders.Ui.Website
-          - script: |
-              echo "##vso[task.setvariable variable=CI;]1"
-              npx playwright test
-            displayName: run playwright tests
-            workingDirectory: src/ContosoTraders.Ui.Website
-            timeoutInMinutes: 20
-          - task: PublishTestResults@2
-            displayName: publish test results
-            condition: succeededOrFailed()
-            inputs:
-              searchFolder: src/ContosoTraders.Ui.Website/playwright-report-junit
-              testResultsFormat: JUnit
-              testResultsFiles: e2e-junit-results.xml
-              mergeTestResults: true
-              failTaskOnFailedTests: true
-              testRunTitle: Playwright Tests
-          - task: PublishBuildArtifacts@1
-            displayName: upload playwright report
-            condition: failed()
-            inputs:
-              PathtoPublish: 'src/ContosoTraders.Ui.Website/playwright-report'
-              ArtifactName: 'playwright-report'
-              publishLocation: 'Container'              
+      # - job: playwright_tests_ui
+      #   dependsOn: [provision]
+      #   container: mcr.microsoft.com/playwright:v1.43.1-jammy
+      #   variables:
+      #     APIURLSHOPPINGCART: $[ dependencies.provision.outputs['getCartsApiEndpoint.cartsApiEndpoint'] ]
+      #     APIURL: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]
+      #     BASEURLFORPLAYWRIGHTTESTING: $[ dependencies.provision.outputs['getUiCdnEndpoint.uiCdnEndpoint'] ]
+      #     B2CCLIENTID: $[ dependencies.provision.outputs['getAzureAdAppClientId.azureAdAppClientId'] ]
+      #   steps:
+      #     - task: NodeTool@0
+      #       displayName: install nodejs
+      #       inputs:
+      #         versionSpec: 18.x
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_APIURLSHOPPINGCART]https://$(APIURLSHOPPINGCART)/v1"
+      #       displayName: set REACT_APP_APIURLSHOPPINGCART
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_APIURL]https://$(APIURL)/v1"
+      #       displayName: set REACT_APP_APIURL
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_BASEURLFORPLAYWRIGHTTESTING]https://$(BASEURLFORPLAYWRIGHTTESTING)"
+      #       displayName: set REACT_APP_BASEURLFORPLAYWRIGHTTESTING
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_B2CCLIENTID]$(B2CCLIENTID)"
+      #       displayName: set REACT_APP_B2CCLIENTID
+      #       condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_AADUSERNAME]$(AADUSERNAME)"
+      #       displayName: set REACT_APP_AADUSERNAME
+      #       condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
+      #     - script: echo "##vso[task.setvariable variable=REACT_APP_AADPASSWORD]$(AADPASSWORD)"
+      #       displayName: set REACT_APP_AADPASSWORD
+      #       condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
+      #     - script: npm ci
+      #       displayName: install dependencies
+      #       workingDirectory: src/ContosoTraders.Ui.Website
+      #     - script: |
+      #         echo "##vso[task.setvariable variable=CI;]1"
+      #         npx playwright test
+      #       displayName: run playwright tests
+      #       workingDirectory: src/ContosoTraders.Ui.Website
+      #       timeoutInMinutes: 20
+      #     - task: PublishTestResults@2
+      #       displayName: publish test results
+      #       condition: succeededOrFailed()
+      #       inputs:
+      #         searchFolder: src/ContosoTraders.Ui.Website/playwright-report-junit
+      #         testResultsFormat: JUnit
+      #         testResultsFiles: e2e-junit-results.xml
+      #         mergeTestResults: true
+      #         failTaskOnFailedTests: true
+      #         testRunTitle: Playwright Tests
+      #     - task: PublishBuildArtifacts@1
+      #       displayName: upload playwright report
+      #       condition: failed()
+      #       inputs:
+      #         PathtoPublish: 'src/ContosoTraders.Ui.Website/playwright-report'
+      #         ArtifactName: 'playwright-report'
+      #         publishLocation: 'Container'              
