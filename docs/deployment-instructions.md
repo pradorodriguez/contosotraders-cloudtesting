@@ -79,6 +79,7 @@ Manually create an Azure AI Services resource in your subscription temporarily, 
 
 ## Prepare your GitHub Workflow for Deployment
 
+> [!IMPORTANT]
 >
 >If you wish to deploy using Azure Pipelines instead of GitHub Workflows, you can follow the instructions [here](./deployment-instructions-azure-pipelines.md) and skip this section entirely.
 >
