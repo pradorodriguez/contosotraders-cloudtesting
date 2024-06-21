@@ -1,7 +1,7 @@
 # Contoso Traders - Cloud testing tools demo app
 
 > [!WARNING]  
-> The content of this repository is based on [contosotraders-cloudtesting](https://github.com/microsoft/contosotraders-cloudtesting) and has been modified to focus its instructions in Github and Azure Chaos Studio experiments.
+> The content of this repository is based on [contosotraders-cloudtesting](https://github.com/microsoft/contosotraders-cloudtesting) and has been modified to focus its instructions in Github, Azure DevOps and Azure Chaos Studio experiments.
 
 The Contoso Traders app is a sample application showcasing [Azure Load Testing](https://aka.ms/malt-docs), [Azure Chaos Studio](https://aka.ms/CHAOS-docs) and more.
 
