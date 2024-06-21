@@ -79,8 +79,9 @@ Manually create an Azure AI Services resource in your subscription temporarily, 
 
 ## Prepare your GitHub Workflow for Deployment
 
+> [!IMPORTANT]
 >
->If you wish to deploy using Azure Pipelines instead of GitHub Workflows, you can follow the instructions [here](./deployment-instructions-azure-pipelines.md) and skip this section entirely.
+>If you wish to deploy using **Azure Pipelines** instead of GitHub Workflows, you can follow the instructions [here](./deployment-instructions-azure-pipelines.md) and skip this section entirely.
 >
 
 1. Set up the repository secrets in your forked repo. On your fork of the github repository, go to the `Settings` tab > `Secrets and variables` > `Actions` > `Secrets` tab and create these necessary repository secrets:

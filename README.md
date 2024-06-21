@@ -1,7 +1,7 @@
 # Contoso Traders - Cloud testing tools demo app
 
 > [!WARNING]  
-> The content of this repository is based on [contosotraders-cloudtesting](https://github.com/microsoft/contosotraders-cloudtesting) and has been modified to focus its instructions in Github and Azure Chaos Studio experiments.
+> The content of this repository is based on [contosotraders-cloudtesting](https://github.com/microsoft/contosotraders-cloudtesting) and has been modified to focus its instructions in Github, Azure DevOps and Azure Chaos Studio experiments.
 
 The Contoso Traders app is a sample application showcasing [Azure Load Testing](https://aka.ms/malt-docs), [Azure Chaos Studio](https://aka.ms/CHAOS-docs) and more.
 
@@ -22,9 +22,10 @@ This repo contains the source code, deployment templates, and demo scripts for e
 
 ## Continuous Integration
 
-| Pipeline                                                                     | Status                                                                                                                                                                                                                                                                               | Details                                                        |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| [GitHub Workflow](./.github/workflows/contoso-traders-cloud-testing.yml)     | [![contoso-traders-cloud-testing](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml/badge.svg?branch=main)](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml) | Deploys to [production](https://production.contosotraders.com) |
+| Pipeline                                                                     | Status                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [GitHub Workflow](./.github/workflows/contoso-traders-cloud-testing.yml)     | [![contoso-traders-cloud-testing](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml/badge.svg?branch=main)](https://github.com/microsoft/contosotraders-cloudtesting/actions/workflows/contoso-traders-cloud-testing.yml) |
+| [Azure DevOps Pipeline](./.azurepipelines/contoso-traders-cloud-testing.yml) | [![Build Status](https://dev.azure.com/MicrosoftTestDemos/ContosoTraders_Testing/_apis/build/status%2Fmicrosoft.contosotraders-cloudtesting?branchName=main)](https://dev.azure.com/MicrosoftTestDemos/ContosoTraders_Testing/_build/latest?definitionId=1&branchName=main)          |
 
 ## Demo Scripts
 

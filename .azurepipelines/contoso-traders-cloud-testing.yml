@@ -90,10 +90,10 @@ stages:
   - stage: default
     jobs:
       - job: provision
-        steps:
+        steps:        
           # section #0: optional configuration of the Azure AD app.
           # create the Azure AD application (and update it if it already exists).
-          # note: This is an idempotent operation.
+          # note: This is an idempotent operation.            
           - task: AzureCLI@1
             displayName: create/update azure active directory app
             condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
@@ -561,7 +561,7 @@ stages:
       # - job: load_tests_with_chaos_products_api
       #   dependsOn: [provision, playwright_tests_ui]
       #   variables:
-      #     productsApiEndpoint: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]
+      #     productsApiEndpoint: $[ dependencies.provision.outputs['getProductsApiEndpoint.productsApiEndpoint'] ]          
       #   steps:
       #     - task: AzureCLI@1
       #       displayName: get chaos experiment resource id

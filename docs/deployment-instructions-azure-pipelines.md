@@ -53,6 +53,13 @@ This document will help you deploy the Contoso Traders application in your Azure
     | `SQLPASSWORD`      | 8 to 15 characters long, must contain uppercase, lowercase, and numeric characters                                                                                                          | YES        |
     | `SUFFIX`           | A unique environment suffix (max 6 characters, alphanumeric, lower case only, no whitespace, no special chars). E.g. 'test51' or '1stg'                                                     | NO         |
     | `DEPLOYMENTREGION` | The Azure region to deploy the application in. Must be one of: `australiaeast`,`centralus`,`eastus`,`eastus2`,`japaneast`,`northcentralus`,`uksouth`,`westcentralus`,`westeurope` | NO         |
+    | `DEPLOYPRIVATEENDPOINTS` |  Deploys private endpoints resources. If not required, set **false**, else set **true**. Must be one of: `false`,`true` | NO         |
+
+> [!IMPORTANT]
+>
+> When setting the **SUFFIX** variable, it is recommended to generate a random string to create a unique value. Online String Generators may be used to create unique values:
+> [Random String Generator](https://randomgenerate.io/random-string-generator)
+> Select **Lowercase Alphabet** and **Numbers** only.
 
    After saving the variable group, click on `Pipeline permissions` and ensure that the `azure-pipelines.yml` pipeline has access to the variable group.
 
