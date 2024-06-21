@@ -101,6 +101,7 @@ stages:
               script: |
                 SUFFIX=$(echo $(date +%s%N | sha256sum | tr -dc 'a-z0-9' | head -c 6 ; echo))
                 echo "Setting variable SUFFIX"
+                echo $(SUFFIX)
                 echo "##vso[task.setvariable variable=SUFFIX;isOutput=true]$SUFFIX"              
           - task: AzureCLI@1
             displayName: create/update azure active directory app
@@ -108,7 +109,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az ad app create --display-name $(AZURE_AD_APP_NAME)$(SUFFIX) --sign-in-audience AzureADandPersonalMicrosoftAccount
+              inlineScript: az ad app create --display-name $(AZURE_AD_APP_NAME)$(OutputSuffix.SUFFIX) --sign-in-audience AzureADandPersonalMicrosoftAccount
           - task: AzureCLI@1
             displayName: get azure ad app's object id
             condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
@@ -116,7 +117,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=azureAdAppObjId;isOutput=true]$(az ad app list --display-name $(AZURE_AD_APP_NAME)$(SUFFIX) --query [].id -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=azureAdAppObjId;isOutput=true]$(az ad app list --display-name $(AZURE_AD_APP_NAME)$(OutputSuffix.SUFFIX) --query [].id -o tsv)"
           - task: AzureCLI@1
             displayName: get azure ad app's client id
             condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
@@ -124,7 +125,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=azureAdAppClientId;isOutput=true]$(az ad app list --display-name $(AZURE_AD_APP_NAME)$(SUFFIX) --query [].appId -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=azureAdAppClientId;isOutput=true]$(az ad app list --display-name $(AZURE_AD_APP_NAME)$(OutputSuffix.SUFFIX) --query [].appId -o tsv)"
           - task: AzureCLI@1
             displayName: register app as a spa
             condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
@@ -191,7 +192,7 @@ stages:
               azureResourceManagerConnection: SERVICEPRINCIPAL
               location: $(DEPLOYMENTREGION)
               csmFile: ./iac/createResourceGroup.bicep
-              overrideParameters: -rgName $(RESOURCE_GROUP_NAME) -suffix $(SUFFIX) -rgLocation $(DEPLOYMENTREGION)
+              overrideParameters: -rgName $(RESOURCE_GROUP_NAME) -suffix $(OutputSuffix.SUFFIX) -rgLocation $(DEPLOYMENTREGION)
           # Next step is to deploy the Azure resources to the resource group `contoso-traders-rg` created above. The deployed resources
           # include storage accounts, function apps, app services cosmos db, and service bus etc.
           # The below step can also be manually executed as follows:
@@ -206,10 +207,10 @@ stages:
               deploymentScope: Resource Group
               azureResourceManagerConnection: SERVICEPRINCIPAL
               location: $(DEPLOYMENTREGION)
-              resourceGroupName: "$(RESOURCE_GROUP_NAME)$(SUFFIX)"
+              resourceGroupName: "$(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)"
               csmFile: ./iac/createResources.bicep
               csmParametersFile: ./iac/createResources.parameters.json
-              overrideParameters: -suffix $(SUFFIX) -sqlPassword $(SQLPASSWORD) -deployPrivateEndpoints $(DEPLOYPRIVATEENDPOINTS)
+              overrideParameters: -suffix $(OutputSuffix.SUFFIX) -sqlPassword $(SQLPASSWORD) -deployPrivateEndpoints $(DEPLOYPRIVATEENDPOINTS)
 
           # Add the logged-in service principal to the key vault access policy
           - task: AzureCLI@1
@@ -217,7 +218,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az keyvault set-policy -n $(KV_NAME)$(SUFFIX) -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --secret-permissions get list set --object-id $(az ad sp show --id $(az account show --query "user.name" -o tsv) --query "id" -o tsv)
+              inlineScript: az keyvault set-policy -n $(KV_NAME)$(OutputSuffix.SUFFIX) -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --secret-permissions get list set --object-id $(az ad sp show --id $(az account show --query "user.name" -o tsv) --query "id" -o tsv)
           # The AKS agent pool needs to be assigned the user-assigned managed identity created (which has kv access)
           - task: AzureCLI@1
             displayName: assign user-assigned managed-identity to aks agentpool
@@ -226,51 +227,51 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 az vmss identity assign \
-                  --identities $(az identity show -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(USER_ASSIGNED_MANAGED_IDENTITY_NAME)$(SUFFIX) --query "id" -o tsv) \
-                  --ids $(az vmss list -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(SUFFIX) --query "[0].id" -o tsv) \
+                  --identities $(az identity show -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(USER_ASSIGNED_MANAGED_IDENTITY_NAME)$(OutputSuffix.SUFFIX) --query "id" -o tsv) \
+                  --ids $(az vmss list -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --query "[0].id" -o tsv) \
           # Seed the DBs and storage accounts
-          - script: sqlcmd -S $(PRODUCTS_DB_SERVER_NAME)$(SUFFIX).database.windows.net -U $(PRODUCTS_DB_USER_NAME) -P $(SQLPASSWORD) -d $(PRODUCTS_DB_NAME) -i ./src/ContosoTraders.Api.Products/Migration/productsdb.sql
+          - script: sqlcmd -S $(PRODUCTS_DB_SERVER_NAME)$(OutputSuffix.SUFFIX).database.windows.net -U $(PRODUCTS_DB_USER_NAME) -P $(SQLPASSWORD) -d $(PRODUCTS_DB_NAME) -i ./src/ContosoTraders.Api.Products/Migration/productsdb.sql
             displayName: seed products db
           - task: AzureCLI@1
             displayName: seed product image (product details)
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az storage blob sync --account-name '$(PRODUCT_IMAGES_STORAGE_ACCOUNT_NAME)$(SUFFIX)' -c '$(PRODUCT_DETAILS_CONTAINER_NAME)' -s 'src/ContosoTraders.Api.Images/product-details'
+              inlineScript: az storage blob sync --account-name '$(PRODUCT_IMAGES_STORAGE_ACCOUNT_NAME)$(OutputSuffix.SUFFIX)' -c '$(PRODUCT_DETAILS_CONTAINER_NAME)' -s 'src/ContosoTraders.Api.Images/product-details'
           - task: AzureCLI@1
             displayName: seed product image (product list)
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az storage blob sync --account-name '$(PRODUCT_IMAGES_STORAGE_ACCOUNT_NAME)$(SUFFIX)' -c '$(PRODUCT_LIST_CONTAINER_NAME)' -s 'src/ContosoTraders.Api.Images/product-list'
+              inlineScript: az storage blob sync --account-name '$(PRODUCT_IMAGES_STORAGE_ACCOUNT_NAME)$(OutputSuffix.SUFFIX)' -c '$(PRODUCT_LIST_CONTAINER_NAME)' -s 'src/ContosoTraders.Api.Images/product-list'
           - task: AzureCLI@1
             displayName: purge product images cdn endpoint
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az cdn endpoint purge --no-wait --content-paths '/*' -n '$(PRODUCTS_CDN_ENDPOINT_NAME)$(SUFFIX)' -g '$(RESOURCE_GROUP_NAME)$(SUFFIX)' --profile-name '$(CDN_PROFILE_NAME)$(SUFFIX)'
+              inlineScript: az cdn endpoint purge --no-wait --content-paths '/*' -n '$(PRODUCTS_CDN_ENDPOINT_NAME)$(OutputSuffix.SUFFIX)' -g '$(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)' --profile-name '$(CDN_PROFILE_NAME)$(OutputSuffix.SUFFIX)'
           - task: AzureCLI@1
             displayName: extract acr password
             name: extractAcrPassword
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=acrPassword;isOutput=true;issecret=true]$(az acr credential show -n $(ACR_NAME)$(SUFFIX) -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --query "passwords[0].value" --output tsv)"
-          - script: docker login $(ACR_NAME)$(SUFFIX).azurecr.io --username $(ACR_NAME)$(SUFFIX) --password $(extractAcrPassword.acrPassword)
+              inlineScript: echo "##vso[task.setvariable variable=acrPassword;isOutput=true;issecret=true]$(az acr credential show -n $(ACR_NAME)$(OutputSuffix.SUFFIX) -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --query "passwords[0].value" --output tsv)"
+          - script: docker login $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io --username $(ACR_NAME)$(OutputSuffix.SUFFIX) --password $(extractAcrPassword.acrPassword)
             displayName: azure container registry login
           - task: AzureCLI@1
             displayName: set aks context
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(AKS_CLUSTER_NAME)$(SUFFIX)
+              inlineScript: az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
 
           #
           # section #2: deploy the carts api
           #
-          - script: docker build src -f ./src/ContosoTraders.Api.Carts/Dockerfile -t $(ACR_NAME)$(SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):latest -t $(ACR_NAME)$(SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
+          - script: docker build src -f ./src/ContosoTraders.Api.Carts/Dockerfile -t $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):latest -t $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
             displayName: docker build
-          - script: docker push --all-tags $(ACR_NAME)$(SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME)
+          - script: docker push --all-tags $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME)
             displayName: docker push (to acr)
           - task: AzureCLI@1
             displayName: deploy to aca
@@ -279,7 +280,7 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 az config set extension.use_dynamic_install=yes_without_prompt
-                az containerapp update -n $(CARTS_ACA_NAME)$(SUFFIX) -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --image $(ACR_NAME)$(SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
+                az containerapp update -n $(CARTS_ACA_NAME)$(OutputSuffix.SUFFIX) -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --image $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
           - task: AzureCLI@1
             displayName: deploy to aca (internal)
             condition: eq(variables['DEPLOYPRIVATEENDPOINTS'], 'true')
@@ -288,14 +289,14 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 az config set extension.use_dynamic_install=yes_without_prompt
-                az containerapp update -n $(CARTS_INTERNAL_ACA_NAME)$(SUFFIX) -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --image $(ACR_NAME)$(SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
+                az containerapp update -n $(CARTS_INTERNAL_ACA_NAME)$(OutputSuffix.SUFFIX) -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --image $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(CARTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
           - task: AzureCLI@1
             displayName: get carts api endpoint
             name: getCartsApiEndpoint
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=cartsApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name cartsApiEndpoint --query value -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=cartsApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(OutputSuffix.SUFFIX) --name cartsApiEndpoint --query value -o tsv)"
 
           #
           # section #3: deploy the products api
@@ -305,17 +306,17 @@ stages:
             name: installHelm
             inputs:
               helmVersionToInstall: 3.9.0
-          - script: docker build src -f ./src/ContosoTraders.Api.Products/Dockerfile -t $(ACR_NAME)$(SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):latest -t $(ACR_NAME)$(SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
+          - script: docker build src -f ./src/ContosoTraders.Api.Products/Dockerfile -t $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):latest -t $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
             displayName: docker build
-          - script: docker push --all-tags $(ACR_NAME)$(SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME)
+          - script: docker push --all-tags $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME)
             displayName: docker push (to acr)
           # more details: https://stackoverflow.com/a/45881324
           - script: kubectl delete secret $(AKS_SECRET_NAME_ACR_PASSWORD) --ignore-not-found
             displayName: delete any existing kubernetes secret (acr password)
           - script: |
               kubectl create secret docker-registry $(AKS_SECRET_NAME_ACR_PASSWORD) \
-                --docker-server=$(ACR_NAME)$(SUFFIX).azurecr.io \
-                --docker-username=$(ACR_NAME)$(SUFFIX) \
+                --docker-server=$(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io \
+                --docker-username=$(ACR_NAME)$(OutputSuffix.SUFFIX) \
                 --docker-password=$(extractAcrPassword.acrPassword) \
                 --save-config \
                 -o yaml | kubectl apply -f -
@@ -326,25 +327,25 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=managedIdentityClientId;isOutput=true]$(az identity show -g $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(USER_ASSIGNED_MANAGED_IDENTITY_NAME)$(SUFFIX) --query "clientId" -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=managedIdentityClientId;isOutput=true]$(az identity show -g $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(USER_ASSIGNED_MANAGED_IDENTITY_NAME)$(OutputSuffix.SUFFIX) --query "clientId" -o tsv)"
           - task: KubernetesManifest@1
             displayName: create kubernetes secret (kv endpoint)
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: createSecret
               secretName: $(AKS_SECRET_NAME_KV_ENDPOINT)
               secretType: generic
-              secretArguments: --from-literal=$(AKS_SECRET_NAME_KV_ENDPOINT)="https://$(KV_NAME)$(SUFFIX).vault.azure.net/"
+              secretArguments: --from-literal=$(AKS_SECRET_NAME_KV_ENDPOINT)="https://$(KV_NAME)$(OutputSuffix.SUFFIX).vault.azure.net/"
           - task: KubernetesManifest@1
             displayName: create kubernetes secret (managed identity client id)
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: createSecret
               secretName: $(AKS_SECRET_NAME_MI_CLIENTID)
               secretType: generic
@@ -357,7 +358,7 @@ stages:
               tokenPrefix: "{"
               tokenSuffix: "}"
               inlineVariables: |
-                SUFFIX: "$(SUFFIX)"
+                SUFFIX: "$(OutputSuffix.SUFFIX)"
                 AKS_REPLICAS: "$(AKS_REPLICAS)"
                 AKS_CPU_LIMIT: "$(AKS_CPU_LIMIT)"
                 AKS_MEMORY_LIMIT: "$(AKS_MEMORY_LIMIT)"
@@ -366,19 +367,19 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/Deployment.yaml
-              containers: $(ACR_NAME)$(SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
+              containers: $(ACR_NAME)$(OutputSuffix.SUFFIX).azurecr.io/$(PRODUCTS_ACR_REPOSITORY_NAME):$(Build.SourceVersion)
               imagePullSecrets: $(AKS_SECRET_NAME_ACR_PASSWORD)
           - task: KubernetesManifest@1
             displayName: apply service manifest
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/Service.yaml
           # setup chaos mesh
@@ -387,19 +388,19 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/NamespaceChaosTesting.yaml
           - script: |
-              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(AKS_CLUSTER_NAME)$(SUFFIX)
+              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               helm repo add chaos-mesh https://charts.chaos-mesh.org
               helm repo update
               helm upgrade --install chaos-mesh chaos-mesh/chaos-mesh --namespace=chaos-testing --set chaosDaemon.runtime=containerd --set chaosDaemon.socketPath=/run/containerd/containerd.sock
             displayName: setup chaos mesh
           # create the ingress controller
           - script: |
-              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(AKS_CLUSTER_NAME)$(SUFFIX)
+              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
               helm repo update
               helm upgrade --install --wait --timeout=1h nginx-ingress ingress-nginx/ingress-nginx \
@@ -414,7 +415,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az network public-ip update --dns-name $(AKS_DNS_LABEL)$(SUFFIX) -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(SUFFIX) -n $(az network public-ip list --query "[?starts_with(name,'kubernetes-') ].name" -o tsv -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(SUFFIX))
+              inlineScript: az network public-ip update --dns-name $(AKS_DNS_LABEL)$(OutputSuffix.SUFFIX) -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) -n $(az network public-ip list --query "[?starts_with(name,'kubernetes-') ].name" -o tsv -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX))
           # hack: extract the full fqdn / dns label of the aks app's public IP address
           - task: AzureCLI@1
             displayName: get aks-fqdn
@@ -423,19 +424,19 @@ stages:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
               # note: There should be a whitespace between ')' and ']'. More details: https://stackoverflow.com/a/59154958
-              inlineScript: echo "##vso[task.setvariable variable=aksFqdn;isOutput=true]$(az network public-ip list --query "[?starts_with(name,'kubernetes-') ].dnsSettings.fqdn" -o tsv -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(SUFFIX))"
+              inlineScript: echo "##vso[task.setvariable variable=aksFqdn;isOutput=true]$(az network public-ip list --query "[?starts_with(name,'kubernetes-') ].dnsSettings.fqdn" -o tsv -g $(AKS_NODES_RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX))"
           # install cert-manager
           - task: KubernetesManifest@1
             displayName: apply namespace manifest (cert-manager)
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/NamespaceCertManager.yaml
           - script: |
-              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(SUFFIX) --name $(AKS_CLUSTER_NAME)$(SUFFIX)
+              az aks get-credentials --resource-group $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX) --name $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
             displayName: install cert-manager
           - bash: sleep 30s
@@ -445,8 +446,8 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/ClusterIssuer.yaml
           - task: replacetokens@5
@@ -462,8 +463,8 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/Certificate.yaml
           - task: replacetokens@5
@@ -479,8 +480,8 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/Ingress.yaml
           - task: KubernetesManifest@1
@@ -488,8 +489,8 @@ stages:
             inputs:
               connectionType: azureResourceManager
               azureSubscriptionConnection: SERVICEPRINCIPAL
-              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(SUFFIX)
-              kubernetesCluster: $(AKS_CLUSTER_NAME)$(SUFFIX)
+              azureResourceGroup: $(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)
+              kubernetesCluster: $(AKS_CLUSTER_NAME)$(OutputSuffix.SUFFIX)
               action: deploy
               manifests: ./src/ContosoTraders.Api.Products/Manifests/ClusterRole.yaml
           - task: AzureCLI@1
@@ -497,14 +498,14 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az keyvault secret set --vault-name $(KV_NAME)$(SUFFIX) --name productsApiEndpoint --value $(getAksFqdn.aksFqdn) --description "endpoint url (fqdn) of the products api"
+              inlineScript: az keyvault secret set --vault-name $(KV_NAME)$(OutputSuffix.SUFFIX) --name productsApiEndpoint --value $(getAksFqdn.aksFqdn) --description "endpoint url (fqdn) of the products api"
           - task: AzureCLI@1
             displayName: get products api endpoint
             name: getProductsApiEndpoint
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=productsApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name productsApiEndpoint --query value -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=productsApiEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(OutputSuffix.SUFFIX) --name productsApiEndpoint --query value -o tsv)"
 
           #
           # section #4: deploy the ui
@@ -533,20 +534,20 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az storage blob sync --account-name '$(UI_STORAGE_ACCOUNT_NAME)$(SUFFIX)' -c '$web' -s 'src/ContosoTraders.Ui.Website/build'
+              inlineScript: az storage blob sync --account-name '$(UI_STORAGE_ACCOUNT_NAME)$(OutputSuffix.SUFFIX)' -c '$web' -s 'src/ContosoTraders.Ui.Website/build'
           - task: AzureCLI@1
             displayName: purge ui cdn endpoint
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: az cdn endpoint purge --no-wait --content-paths '/*' -n '$(UI_CDN_ENDPOINT_NAME)$(SUFFIX)' -g '$(RESOURCE_GROUP_NAME)$(SUFFIX)' --profile-name '$(CDN_PROFILE_NAME)$(SUFFIX)'
+              inlineScript: az cdn endpoint purge --no-wait --content-paths '/*' -n '$(UI_CDN_ENDPOINT_NAME)$(OutputSuffix.SUFFIX)' -g '$(RESOURCE_GROUP_NAME)$(OutputSuffix.SUFFIX)' --profile-name '$(CDN_PROFILE_NAME)$(OutputSuffix.SUFFIX)'
           - task: AzureCLI@1
             displayName: get ui cdn endpoint
             name: getUiCdnEndpoint
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo "##vso[task.setvariable variable=uiCdnEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name uiCdnEndpoint --query value -o tsv)"
+              inlineScript: echo "##vso[task.setvariable variable=uiCdnEndpoint;isOutput=true]$(az keyvault secret show --vault-name $(KV_NAME)$(OutputSuffix.SUFFIX) --name uiCdnEndpoint --query value -o tsv)"
           - task: AzureCLI@1
             displayName: register auth callback (UI CDN)
             condition: and(ne(variables['AADUSERNAME'], ''), ne(variables['AADPASSWORD'], ''))
@@ -564,7 +565,7 @@ stages:
             inputs:
               azureSubscription: SERVICEPRINCIPAL
               scriptLocation: inlineScript
-              inlineScript: echo UI CDN endpoint accessible at https://$(az keyvault secret show --vault-name $(KV_NAME)$(SUFFIX) --name uiCdnEndpoint --query value -o tsv)
+              inlineScript: echo UI CDN endpoint accessible at https://$(az keyvault secret show --vault-name $(KV_NAME)$(OutputSuffix.SUFFIX) --name uiCdnEndpoint --query value -o tsv)
 
       # - job: load_tests_with_chaos_products_api
       #   dependsOn: [provision, playwright_tests_ui]
