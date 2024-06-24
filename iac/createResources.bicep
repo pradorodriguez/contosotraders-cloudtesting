@@ -51,7 +51,7 @@ var kvSecretNameVnetAcaSubnetId = 'vnetAcaSubnetId'
 // user-assigned managed identity (for key vault access)
 var userAssignedMIForKVAccessName = '${prefixHyphenated}-mi-kv-access${suffix}'
 
-// comos db generals
+// comos db general variables
 
 @description('The primary region for the Cosmos DB account.')
 param primaryRegion string = 'eastus2'
