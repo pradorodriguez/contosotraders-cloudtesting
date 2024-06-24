@@ -21,9 +21,7 @@ param tenantId string = subscription().tenantId
 
 // aks
 param aksLinuxAdminUsername string // value supplied via parameters file
-
 param prefix string = 'contosotraders'
-
 param prefixHyphenated string = 'contoso-traders'
 
 // sql
@@ -52,6 +50,72 @@ var kvSecretNameVnetAcaSubnetId = 'vnetAcaSubnetId'
 
 // user-assigned managed identity (for key vault access)
 var userAssignedMIForKVAccessName = '${prefixHyphenated}-mi-kv-access${suffix}'
+
+// comos db general variables
+
+@description('The primary region for the Cosmos DB account.')
+param primaryRegion string = 'eastus2'
+
+@description('The secondary region for the Cosmos DB account.')
+param secondaryRegion string = 'westus2'
+
+@description('The default consistency level of the Cosmos DB account.')
+@allowed([
+  'Eventual'
+  'ConsistentPrefix'
+  'Session'
+  'BoundedStaleness'
+  'Strong'
+])
+param defaultConsistencyLevel string = 'Session'
+
+@description('Max stale requests. Required for BoundedStaleness. Valid ranges, Single Region: 10 to 2147483647. Multi Region: 100000 to 2147483647.')
+@minValue(10)
+@maxValue(2147483647)
+param maxStalenessPrefix int = 100000
+
+@description('Max lag time (minutes). Required for BoundedStaleness. Valid ranges, Single Region: 5 to 84600. Multi Region: 300 to 86400.')
+@minValue(5)
+@maxValue(86400)
+param maxIntervalInSeconds int = 300
+
+@description('Enable system managed failover for regions')
+param systemManagedFailover bool = true
+
+@description('Maximum autoscale throughput for the container')
+@minValue(1000)
+@maxValue(1000000)
+param autoscaleMaxThroughput int = 1000
+
+var consistencyPolicy = {
+  Eventual: {
+    defaultConsistencyLevel: 'Eventual'
+  }
+  ConsistentPrefix: {
+    defaultConsistencyLevel: 'ConsistentPrefix'
+  }
+  Session: {
+    defaultConsistencyLevel: 'Session'
+  }
+  BoundedStaleness: {
+    defaultConsistencyLevel: 'BoundedStaleness'
+    maxStalenessPrefix: maxStalenessPrefix
+    maxIntervalInSeconds: maxIntervalInSeconds
+  }
+}
+
+var cosmosDBlocations = [
+  {
+    locationName: primaryRegion
+    failoverPriority: 0
+    isZoneRedundant: false
+  }
+  {
+    locationName: secondaryRegion
+    failoverPriority: 1
+    isZoneRedundant: false
+  }
+]
 
 // cosmos db (stocks db)
 var stocksDbAcctName = '${prefixHyphenated}-stocks${suffix}'
@@ -136,6 +200,13 @@ var aksAutoScaling = true
 var aksClusterName = '${prefixHyphenated}-aks${suffix}'
 var aksClusterDnsPrefix = '${prefixHyphenated}-aks${suffix}'
 var aksClusterNodeResourceGroup = '${prefixHyphenated}-aks-nodes-rg${suffix}'
+param agentCount int = 1
+param akaAvailabilityZones array = [
+  '1'
+  '2'
+  '3'
+]
+
 
 // virtual network
 var vnetName = '${prefixHyphenated}-vnet${suffix}'
@@ -379,21 +450,14 @@ resource userassignedmiforkvaccess 'Microsoft.ManagedIdentity/userAssignedIdenti
 // cosmos db account
 resource stocksdba 'Microsoft.DocumentDB/databaseAccounts@2022-08-15' = {
   name: stocksDbAcctName
+  kind: 'GlobalDocumentDB'
   location: resourceLocation
   tags: resourceTags
   properties: {
+    consistencyPolicy: consistencyPolicy[defaultConsistencyLevel]
+    locations: cosmosDBlocations
     databaseAccountOfferType: 'Standard'
-    enableFreeTier: false
-    capabilities: [
-      {
-        name: 'EnableServerless'
-      }
-    ]
-    locations: [
-      {
-        locationName: resourceLocation
-      }
-    ]
+    enableAutomaticFailover: systemManagedFailover
   }
 
   // cosmos db database
@@ -419,6 +483,11 @@ resource stocksdba 'Microsoft.DocumentDB/databaseAccounts@2022-08-15' = {
             paths: [
               '/id'
             ]
+          }
+        }
+        options: {
+          autoscaleSettings: {
+            maxThroughput: autoscaleMaxThroughput
           }
         }
       }
@@ -1287,7 +1356,7 @@ resource dashboard 'Microsoft.Portal/dashboards@2020-09-01-preview' = {
 // aks cluster
 //
 
-resource aks 'Microsoft.ContainerService/managedClusters@2022-10-02-preview' = {
+resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
   name: aksClusterName
   location: resourceLocation
   tags: resourceTags
@@ -1301,10 +1370,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2022-10-02-preview' = {
       {
         name: 'agentpool'
         osDiskSizeGB: 0 // Specifying 0 will apply the default disk size for that agentVMSize.
-        count: 1
+        count: agentCount
         enableAutoScaling: aksAutoScaling
         minCount: 1 // minimum node count
         maxCount: 3 // maximum node count
+        availabilityZones: akaAvailabilityZones
         vmSize: 'standard_b2s'
         osType: 'Linux'
         mode: 'System'
