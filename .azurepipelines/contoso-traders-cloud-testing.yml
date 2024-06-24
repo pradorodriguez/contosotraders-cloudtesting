@@ -2,6 +2,7 @@ name: contoso-traders-cloud-testing
 
 trigger:
   - main
+  - branch-ado-v2
 
 pr:
   branches:
