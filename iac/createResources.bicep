@@ -136,6 +136,12 @@ var aksAutoScaling = true
 var aksClusterName = '${prefixHyphenated}-aks${suffix}'
 var aksClusterDnsPrefix = '${prefixHyphenated}-aks${suffix}'
 var aksClusterNodeResourceGroup = '${prefixHyphenated}-aks-nodes-rg${suffix}'
+param agentCount int = 1
+param akaAvailabilityZones array = [
+  '1'
+  '2'
+  '3'
+]
 
 // virtual network
 var vnetName = '${prefixHyphenated}-vnet${suffix}'
@@ -1305,6 +1311,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2022-10-02-preview' = {
         enableAutoScaling: aksAutoScaling
         minCount: 1 // minimum node count
         maxCount: 3 // maximum node count
+        availabilityZones: akaAvailabilityZones
         vmSize: 'standard_b2s'
         osType: 'Linux'
         mode: 'System'
