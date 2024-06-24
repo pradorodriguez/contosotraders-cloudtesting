@@ -503,52 +503,53 @@ resource stocksdba_db_c1 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
 //
 
 // cosmos db account
-resource cartsdba 'Microsoft.DocumentDB/databaseAccounts@2022-08-15' = {
+resource cartsdba 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   name: cartsDbAcctName
+  kind: 'GlobalDocumentDB'
   location: resourceLocation
   tags: resourceTags
   properties: {
+    consistencyPolicy: consistencyPolicy[defaultConsistencyLevel]
+    locations: cosmosDBlocations
     databaseAccountOfferType: 'Standard'
-    enableFreeTier: false
-    capabilities: [
-      {
-        name: 'EnableServerless'
-      }
-    ]
-    locations: [
-      {
-        locationName: resourceLocation
-      }
-    ]
+    enableAutomaticFailover: systemManagedFailover
   }
+}
 
-  // cosmos db database
-  resource cartsdba_db 'sqlDatabases' = {
-    name: cartsDbName
-    location: resourceLocation
-    tags: resourceTags
-    properties: {
-      resource: {
-        id: cartsDbName
+// cosmos db database
+resource cartsdba_db 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' = {
+  parent: cartsdba
+  name: cartsDbName
+  location: resourceLocation
+  tags: resourceTags
+  properties: {
+    resource: {
+      id: cartsDbName
+    }
+  }
+}
+
+// cosmos db collection
+resource cartsdba_db_c1 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cartsdba_db
+  name: cartsDbStocksContainerName
+  location: resourceLocation
+  tags: resourceTags
+  properties: {
+    resource: {
+      id: cartsDbStocksContainerName
+      partitionKey: {
+        paths: [
+          '/Email'
+        ]
+        kind: 'Hash'
       }
     }
-
-    // cosmos db collection
-    resource cartsdba_db_c1 'containers' = {
-      name: cartsDbStocksContainerName
-      location: resourceLocation
-      tags: resourceTags
-      properties: {
-        resource: {
-          id: cartsDbStocksContainerName
-          partitionKey: {
-            paths: [
-              '/Email'
-            ]
-          }
-        }
+    options: {
+      autoscaleSettings: {
+        maxThroughput: autoscaleMaxThroughput
       }
-    }
+    } 
   }
 }
 
